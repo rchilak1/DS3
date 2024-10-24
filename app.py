@@ -9,10 +9,10 @@ st.markdown(
     """
     <style>
     .stSlider label {
-        font-size: 2rem; /* Increase the size for the slider label */
+        font-size: 200pixel; /* Increase the size for the slider label */
     }
-    .css-1dp5vir {
-        font-size: 2rem; /* Increase the size for the slider value */
+    .st-af .css-1dp5vir {
+        font-size: 200pixel; /* Increase the size for the slider value */
     }
     </style>
     """,
@@ -64,13 +64,15 @@ monkey_labels = {
     9: 'nilgiri_langur'
 }
 
+
+
 # Cache the model loading process to avoid reloading the model every time
 @st.cache_resource
 def load_model():
     # Load the pre-trained best model (best_model.keras)
     if os.path.exists('best_model.keras'):
         model = tf.keras.models.load_model('best_model.keras')
-        st.subheader("Loaded pre-trained model from disk.")
+        st.subheader("Loaded best model from cloud. History plot shown below")
     else:
         st.error("Pre-trained model 'best_model.keras' not found. Please upload the file.")
         return None
@@ -78,22 +80,26 @@ def load_model():
 
 # Load the data
 X_train, X_test, y_trainHot, y_testHot = load_data()
-st.subheader("Data loaded successfully!")
+st.subheader("Dataset loaded successfully!")
+st.subheader(' ')
 
 # Load the trained model for inference
 model = load_model()
+
+st.image('epochInfo.png')
 
 if model:
     # Evaluate the model's performance on the entire test data
     final_acc = model.evaluate(X_test, y_testHot, verbose=0)[1]
     st.subheader(f"Final Accuracy on test data: {final_acc*100:.2f}%")
+    st.subheader(' ')
 
     # Cache predictions so they are not recomputed each time the slider moves
     @st.cache_data
     def get_predictions(model, X_test):
         return model.predict(X_test)
 
-    # Get predictions for the entire test set (only once, stored in cache)
+    # Get predictions for the entire test set
     y_pred = get_predictions(model, X_test)
 
     # **Subset selection for display purposes**:
@@ -122,3 +128,8 @@ if model:
     # Display the predicted common name and the true common name
     st.subheader(f"Predicted Label: {predicted_common_name}")
     st.subheader(f"True Label: {true_common_name}")
+
+
+st.subheader(' ')
+st.subheader('Parameter Testing Log')
+st.image('parameters.png')
