@@ -1,0 +1,11 @@
+Iteration,Number of Layers,Filter Size Layer 1,Activation Function,Dense Units,Dropout Rate,Learning Rate,Batch Size,Optimizer,Train Accuracy,Test Accuracy
+1,1,Global Average Pooling + Dense,relu,1024,0.5,0.0001,32,adam,96.36%,90.07%
+2,1,Global Average Pooling + Dense,tanh,512,0.3,0.0001,64,adam,94.54%,89.34%
+3,1,Global Average Pooling + Dense,sigmoid,256,0.4,1e-05,32,adam,23.32%,46.69%
+4,1,Global Average Pooling + Dense,relu,1024,0.2,0.001,16,rmsprop,85.43%,82.72%
+5,1,Global Average Pooling + Dense,elu,512,0.5,0.0001,64,sgd,10.56%,11.76%
+6,1,Global Average Pooling + Dense,selu,1024,0.3,0.0001,128,adam,93.72%,90.81%
+7,1,Global Average Pooling + Dense,tanh,512,0.3,0.0005,16,adam,100.00%,90.07%
+8,1,Global Average Pooling + Dense,relu,256,0.4,0.0005,128,rmsprop,18.94%,24.26%
+9,1,Global Average Pooling + Dense,sigmoid,512,0.5,0.001,64,sgd,14.12%,23.53%
+10,1,Global Average Pooling + Dense,elu,1024,0.3,0.0001,32,adamax,27.05%,36.03%
