@@ -1,13 +1,23 @@
 import streamlit as st
 import tensorflow as tf
-from tensorflow.keras.applications import MobileNetV2
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import ReduceLROnPlateau
 import numpy as np
 import os
 import gdown
+
+# Add custom CSS to increase the font size of the slider label and value
+st.markdown(
+    """
+    <style>
+    .stSlider label {
+        font-size: 200pixel; /* Increase the size for the slider label */
+    }
+    .st-af .css-1dp5vir {
+        font-size: 200pixel; /* Increase the size for the slider value */
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # Caching the data loading step so it won't be reloaded every time
 @st.cache_data
@@ -20,16 +30,16 @@ def load_data():
 
     # Download the files if not already present
     if not os.path.exists('X_train.npy'):
-        st.write("Downloading X_train.npy...")
+        st.subheader("Downloading X_train.npy...")
         gdown.download(X_train_link, 'X_train.npy', quiet=False)
     if not os.path.exists('X_test.npy'):
-        st.write("Downloading X_test.npy...")
+        st.subheader("Downloading X_test.npy...")
         gdown.download(X_test_link, 'X_test.npy', quiet=False)
     if not os.path.exists('y_trainHot.npy'):
-        st.write("Downloading y_trainHot.npy...")
+        st.subheader("Downloading y_trainHot.npy...")
         gdown.download(y_trainHot_link, 'y_trainHot.npy', quiet=False)
     if not os.path.exists('y_testHot.npy'):
-        st.write("Downloading y_testHot.npy...")
+        st.subheader("Downloading y_testHot.npy...")
         gdown.download(y_testHot_link, 'y_testHot.npy', quiet=False)
 
     # Load the numpy arrays after downloading
@@ -40,109 +50,86 @@ def load_data():
 
     return X_train, X_test, y_trainHot, y_testHot
 
+# Dictionary for mapping numeric labels to common names
+monkey_labels = {
+    0: 'mantled_howler',
+    1: 'patas_monkey',
+    2: 'bald_uakari',
+    3: 'japanese_macaque',
+    4: 'pygmy_marmoset',
+    5: 'white_headed_capuchin',
+    6: 'silvery_marmoset',
+    7: 'common_squirrel_monkey',
+    8: 'black_headed_night_monkey',
+    9: 'nilgiri_langur'
+}
+
+
+
 # Cache the model loading process to avoid reloading the model every time
 @st.cache_resource
 def load_model():
-    # Load and set up the MobileNetV2 model
-    base_model = MobileNetV2(weights='imagenet', include_top=False, input_shape=(150, 150, 3))
-    base_model.trainable = False
-
-    x = base_model.output
-    x = GlobalAveragePooling2D()(x)
-    x = Dense(1024, activation='relu')(x)
-    x = Dropout(0.5)(x)
-    predictions = Dense(10, activation='softmax')(x)
-
-    model = Model(inputs=base_model.input, outputs=predictions)
-    model.compile(optimizer=Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
+    # Load the pre-trained best model (best_model.keras)
+    if os.path.exists('best_model.keras'):
+        model = tf.keras.models.load_model('best_model.keras')
+        st.subheader("Loaded best model from cloud. History plot shown below")
+    else:
+        st.error("Pre-trained model 'best_model.keras' not found. Please upload the file.")
+        return None
     return model
 
 # Load the data
 X_train, X_test, y_trainHot, y_testHot = load_data()
-st.write("Data loaded successfully!")
+st.subheader("Dataset loaded successfully!")
+st.subheader(' ')
 
-# Function to train the model
-@st.cache_resource
-def train_model():
-    # Check if the model has already been trained and saved
-    if os.path.exists('trained_model.h5'):
-        model = tf.keras.models.load_model('trained_model.h5')
-        st.write("Loaded trained model from disk.")
-        return model
+# Load the trained model for inference
+model = load_model()
 
-    # Load and compile the model
-    model = load_model()
+st.image('epochInfo.png')
 
-    # Initialize placeholders in Streamlit for dynamic updates
-    log_placeholder = st.empty()
+if model:
+    # Evaluate the model's performance on the entire test data
+    final_acc = model.evaluate(X_test, y_testHot, verbose=0)[1]
+    st.subheader(f"Final Accuracy on test data: {final_acc*100:.2f}%")
+    st.subheader(' ')
 
-    # Store all epoch logs to display them cumulatively
-    log_history = []
+    # Cache predictions so they are not recomputed each time the slider moves
+    @st.cache_data
+    def get_predictions(model, X_test):
+        return model.predict(X_test)
 
-    # Custom callback to dynamically update logs in Streamlit
-    class StreamlitProgress(tf.keras.callbacks.Callback):
-        def on_epoch_end(self, epoch, logs=None):
-            # Append the new epoch logs
-            log_history.append(f"Epoch {epoch + 1}/{self.params['epochs']}\n"
-                               f"Train Loss: {logs['loss']:.4f}, Train Accuracy: {logs['accuracy']:.4f}\n"
-                               f"Val Loss: {logs['val_loss']:.4f}, Val Accuracy: {logs['val_accuracy']:.4f}\n")
+    # Get predictions for the entire test set
+    y_pred = get_predictions(model, X_test)
 
-            # Update the log placeholder with all epoch logs
-            log_placeholder.text("\n".join(log_history))
+    # **Subset selection for display purposes**:
+    # Limit to 25 images for visualization (subset of test set)
+    num_images_to_visualize = 25
+    random_indices = np.random.choice(X_test.shape[0], num_images_to_visualize, replace=False)
+    X_test_subset = X_test[random_indices]
+    y_testHot_subset = y_testHot[random_indices]
+    y_pred_subset = y_pred[random_indices]
 
-    # Set up callbacks
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, min_lr=0.00001)
+    # Create a slider for selecting the index of the test image from the limited subset
+    st.subheader(f"Visualizing {num_images_to_visualize} random test images and their predictions:")
+    index = st.slider("Select test image index:", min_value=0, max_value=num_images_to_visualize - 1, value=0)
 
-    # Train the model with the Streamlit callback
-    model.fit(
-        X_train, y_trainHot,
-        validation_data=(X_test, y_testHot),
-        epochs=10,
-        batch_size=32,
-        callbacks=[StreamlitProgress(), reduce_lr],
-        verbose=0  # Turn off verbose so Streamlit handles it
-    )
+    # Display the selected test image and the predicted label
+    st.image(X_test_subset[index], caption=f"Test Image at Index {index}", use_column_width=True)
 
-    # Save the entire trained model
-    model.save('trained_model.h5')
-    st.write("Model trained and saved to disk.")
+    # Get the predicted label and the true label for the selected image
+    predicted_label = np.argmax(y_pred_subset[index])
+    true_label = np.argmax(y_testHot_subset[index])
 
-    return model
+    # Display the predicted and true label as common names
+    predicted_common_name = monkey_labels[predicted_label]
+    true_common_name = monkey_labels[true_label]
+
+    # Display the predicted common name and the true common name
+    st.subheader(f"Predicted Label: {predicted_common_name}")
+    st.subheader(f"True Label: {true_common_name}")
 
 
-# Get the trained model
-model = train_model()
-
-# After training is complete, show final accuracy
-final_acc = model.evaluate(X_test, y_testHot, verbose=0)[1]
-st.write(f"Final Accuracy on test data: {final_acc*100:.2f}%")
-
-# Cache predictions so they are not recomputed each time the slider moves
-@st.cache_data
-def get_predictions(model, X_test):
-    return model.predict(X_test)
-
-# Get predictions and cache them
-y_pred = get_predictions(model, X_test)
-
-# Limit to 25 images for visualization
-num_images_to_visualize = 25
-random_indices = np.random.choice(X_test.shape[0], num_images_to_visualize, replace=False)
-X_test_subset = X_test[random_indices]
-y_testHot_subset = y_testHot[random_indices]
-y_pred_subset = y_pred[random_indices]
-
-# Create a slider for selecting the index of the test image from the limited subset
-st.write(f"Visualizing {num_images_to_visualize} random test images and their predictions:")
-index = st.slider("Select test image index:", min_value=0, max_value=num_images_to_visualize - 1, value=0)
-
-# Display the selected test image and the predicted label
-st.image(X_test_subset[index], caption=f"Test Image at Index {index}", use_column_width=True)
-
-# Get the predicted label and the true label for the selected image
-predicted_label = np.argmax(y_pred_subset[index])
-true_label = np.argmax(y_testHot_subset[index])
-
-# Display the predicted label and the true label
-st.write(f"Predicted Label: {predicted_label}")
-st.write(f"True Label: {true_label}")
+st.subheader(' ')
+st.subheader('Parameter Testing Log')
+st.image('parameters.png')
