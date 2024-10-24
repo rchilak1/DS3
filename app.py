@@ -72,7 +72,7 @@ def load_model():
 
 # Function to compute overall test accuracy
 @st.cache_data
-def compute_test_accuracy(model, test_dataset):
+def compute_test_accuracy(model, _test_dataset):
     # Evaluate the model on the test dataset
     results = model.evaluate(test_dataset, verbose=0)
     accuracy = results[1]  # Assuming 'accuracy' is the second metric
