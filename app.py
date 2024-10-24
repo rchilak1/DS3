@@ -33,10 +33,10 @@ monkey_labels = {
     9: 'nilgiri_langur'
 }
 
-# Caching the data loading step so it won't be reloaded every time
-@st.cache_data
-def load_data():
-    # Google Drive links for the files (replace with your own direct download links)
+# Function to load the test data using tf.data.Dataset
+@st.cache_resource
+def load_test_dataset(batch_size=32):
+    # Download links for X_test and y_testHot
     X_test_link = 'https://drive.google.com/uc?id=1-0MLEvsN-OeVHveNK5GXwfkw-t_18k45'
     y_testHot_link = 'https://drive.google.com/uc?id=1-0iiFd75de7OPVb2BatpllwGD5x8Dm5u'
 
@@ -52,7 +52,11 @@ def load_data():
     X_test = np.load('X_test.npy', allow_pickle=True)
     y_testHot = np.load('y_testHot.npy', allow_pickle=True)
 
-    return X_test, y_testHot
+    # Create a tf.data.Dataset from the test data
+    test_dataset = tf.data.Dataset.from_tensor_slices((X_test, y_testHot))
+    test_dataset = test_dataset.batch(batch_size)
+
+    return test_dataset, X_test.shape[0]  # Return total number of test samples
 
 # Cache the model loading process to avoid reloading the model every time
 @st.cache_resource
@@ -66,9 +70,17 @@ def load_model():
         return None
     return model
 
-# Load the data
-X_test, y_testHot = load_data()
-st.subheader("Dataset loaded successfully!")
+# Function to compute overall test accuracy
+@st.cache_data
+def compute_test_accuracy(model, test_dataset):
+    # Evaluate the model on the test dataset
+    results = model.evaluate(test_dataset, verbose=0)
+    accuracy = results[1]  # Assuming 'accuracy' is the second metric
+    return accuracy
+
+# Load the test dataset
+test_dataset, num_test_samples = load_test_dataset()
+st.subheader("Test dataset loaded successfully!")
 st.subheader(' ')
 
 # Load the trained model for inference
@@ -77,27 +89,35 @@ model = load_model()
 st.image('epochInfo.png')
 
 if model:
+    # Compute and display the overall test accuracy
+    final_acc = compute_test_accuracy(model, test_dataset)
+    st.subheader(f"Final Accuracy on test data: {final_acc*100:.2f}%")
+    st.subheader(' ')
+
     # **Subset selection for display purposes**:
     # Limit to 25 images for visualization (subset of test set)
     num_images_to_visualize = 25
     # Seed the random number generator for consistent results
     np.random.seed(42)
-    random_indices = np.random.choice(X_test.shape[0], num_images_to_visualize, replace=False)
-    X_test_subset = X_test[random_indices]
-    y_testHot_subset = y_testHot[random_indices]
+    random_indices = np.random.choice(num_test_samples, num_images_to_visualize, replace=False)
 
-    # Cache predictions so they are not recomputed each time the slider moves
+    # Function to load the visualization subset
+    @st.cache_resource
+    def load_visualization_subset():
+        # Load only the subset of test images and labels
+        X_test_subset = np.load('X_test.npy', mmap_mode='r')[random_indices]
+        y_testHot_subset = np.load('y_testHot.npy', mmap_mode='r')[random_indices]
+        return X_test_subset, y_testHot_subset
+
+    X_test_subset, y_testHot_subset = load_visualization_subset()
+
+    # Cache predictions on the subset
     @st.cache_data
-    def get_predictions(model, X_subset):
+    def get_predictions_subset(model, X_subset):
         return model.predict(X_subset)
 
     # Get predictions for the subset
-    y_pred_subset = get_predictions(model, X_test_subset)
-
-    # Evaluate the model's performance on the subset
-    subset_acc = np.mean(np.argmax(y_pred_subset, axis=1) == np.argmax(y_testHot_subset, axis=1))
-    st.subheader(f"Accuracy on the subset of {num_images_to_visualize} images: {subset_acc*100:.2f}%")
-    st.subheader(' ')
+    y_pred_subset = get_predictions_subset(model, X_test_subset)
 
     # Create a slider for selecting the index of the test image from the limited subset
     st.subheader(f"Visualizing {num_images_to_visualize} random test images and their predictions:")
