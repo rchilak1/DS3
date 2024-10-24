@@ -1,6 +1,4 @@
-# DS3
-
-Visualizer for CS4372 Assignment 3
+# CS4372 Assignment 3 Visualizer
 
 app.py 
   - serves as the streamlit backend
