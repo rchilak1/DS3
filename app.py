@@ -4,6 +4,8 @@ import numpy as np
 import os
 import gdown
 
+st.title("CS4372 Assignment 3 Visualizer")
+
 # Add custom CSS to increase the font size of the slider label and value
 st.markdown(
     """
