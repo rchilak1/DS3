@@ -19,37 +19,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Caching the data loading step so it won't be reloaded every time
-@st.cache_data
-def load_data():
-    # Google Drive links for the files (replace with your own direct download links)
-    X_train_link = 'https://drive.google.com/uc?id=1--m_zJGXNIzD4Q7Ozl9nimHWCJ8HAoE-'
-    X_test_link = 'https://drive.google.com/uc?id=1-0MLEvsN-OeVHveNK5GXwfkw-t_18k45'
-    y_trainHot_link = 'https://drive.google.com/uc?id=1-2FQR0BqDUqHhXSJc9k0iYn74-vJ7CMG'
-    y_testHot_link = 'https://drive.google.com/uc?id=1-0iiFd75de7OPVb2BatpllwGD5x8Dm5u'
-
-    # Download the files if not already present
-    if not os.path.exists('X_train.npy'):
-        st.subheader("Downloading X_train.npy...")
-        gdown.download(X_train_link, 'X_train.npy', quiet=False)
-    if not os.path.exists('X_test.npy'):
-        st.subheader("Downloading X_test.npy...")
-        gdown.download(X_test_link, 'X_test.npy', quiet=False)
-    if not os.path.exists('y_trainHot.npy'):
-        st.subheader("Downloading y_trainHot.npy...")
-        gdown.download(y_trainHot_link, 'y_trainHot.npy', quiet=False)
-    if not os.path.exists('y_testHot.npy'):
-        st.subheader("Downloading y_testHot.npy...")
-        gdown.download(y_testHot_link, 'y_testHot.npy', quiet=False)
-
-    # Load the numpy arrays after downloading
-    X_train = np.load('X_train.npy', allow_pickle=True)
-    X_test = np.load('X_test.npy', allow_pickle=True)
-    y_trainHot = np.load('y_trainHot.npy', allow_pickle=True)
-    y_testHot = np.load('y_testHot.npy', allow_pickle=True)
-
-    return X_train, X_test, y_trainHot, y_testHot
-
 # Dictionary for mapping numeric labels to common names
 monkey_labels = {
     0: 'mantled_howler',
@@ -64,7 +33,26 @@ monkey_labels = {
     9: 'nilgiri_langur'
 }
 
+# Caching the data loading step so it won't be reloaded every time
+@st.cache_data
+def load_data():
+    # Google Drive links for the files (replace with your own direct download links)
+    X_test_link = 'https://drive.google.com/uc?id=1-0MLEvsN-OeVHveNK5GXwfkw-t_18k45'
+    y_testHot_link = 'https://drive.google.com/uc?id=1-0iiFd75de7OPVb2BatpllwGD5x8Dm5u'
 
+    # Download the files if not already present
+    if not os.path.exists('X_test.npy'):
+        st.subheader("Downloading X_test.npy...")
+        gdown.download(X_test_link, 'X_test.npy', quiet=False)
+    if not os.path.exists('y_testHot.npy'):
+        st.subheader("Downloading y_testHot.npy...")
+        gdown.download(y_testHot_link, 'y_testHot.npy', quiet=False)
+
+    # Load the numpy arrays after downloading
+    X_test = np.load('X_test.npy', allow_pickle=True)
+    y_testHot = np.load('y_testHot.npy', allow_pickle=True)
+
+    return X_test, y_testHot
 
 # Cache the model loading process to avoid reloading the model every time
 @st.cache_resource
@@ -79,7 +67,7 @@ def load_model():
     return model
 
 # Load the data
-X_train, X_test, y_trainHot, y_testHot = load_data()
+X_test, y_testHot = load_data()
 st.subheader("Dataset loaded successfully!")
 st.subheader(' ')
 
@@ -89,26 +77,27 @@ model = load_model()
 st.image('epochInfo.png')
 
 if model:
-    # Evaluate the model's performance on the entire test data
-    final_acc = model.evaluate(X_test, y_testHot, verbose=0)[1]
-    st.subheader(f"Final Accuracy on test data: {final_acc*100:.2f}%")
-    st.subheader(' ')
-
-    # Cache predictions so they are not recomputed each time the slider moves
-    @st.cache_data
-    def get_predictions(model, X_test):
-        return model.predict(X_test)
-
-    # Get predictions for the entire test set
-    y_pred = get_predictions(model, X_test)
-
     # **Subset selection for display purposes**:
     # Limit to 25 images for visualization (subset of test set)
     num_images_to_visualize = 25
+    # Seed the random number generator for consistent results
+    np.random.seed(42)
     random_indices = np.random.choice(X_test.shape[0], num_images_to_visualize, replace=False)
     X_test_subset = X_test[random_indices]
     y_testHot_subset = y_testHot[random_indices]
-    y_pred_subset = y_pred[random_indices]
+
+    # Cache predictions so they are not recomputed each time the slider moves
+    @st.cache_data
+    def get_predictions(model, X_subset):
+        return model.predict(X_subset)
+
+    # Get predictions for the subset
+    y_pred_subset = get_predictions(model, X_test_subset)
+
+    # Evaluate the model's performance on the subset
+    subset_acc = np.mean(np.argmax(y_pred_subset, axis=1) == np.argmax(y_testHot_subset, axis=1))
+    st.subheader(f"Accuracy on the subset of {num_images_to_visualize} images: {subset_acc*100:.2f}%")
+    st.subheader(' ')
 
     # Create a slider for selecting the index of the test image from the limited subset
     st.subheader(f"Visualizing {num_images_to_visualize} random test images and their predictions:")
@@ -128,7 +117,6 @@ if model:
     # Display the predicted common name and the true common name
     st.subheader(f"Predicted Label: {predicted_common_name}")
     st.subheader(f"True Label: {true_common_name}")
-
 
 st.subheader(' ')
 st.subheader('Parameter Testing Log')
