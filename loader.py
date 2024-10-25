@@ -11,7 +11,7 @@ import numpy as np
 import os
 import datetime
 
-# Caching the data loading step so it won't be reloaded every time
+# Caching data loading step so it won't be reloaded every time
 def load_data():
     # Load the numpy arrays after downloading
     X_train = np.load('X_train.npy', allow_pickle=True)
@@ -68,23 +68,23 @@ class EvaluationMetricsCallback(tf.keras.callbacks.Callback):
         print(f"\nClassification Report:\n")
         print(classification_report(true_labels, predictions))
 
-# Train the model with the specified parameters and save the best model as best_model.h5
+# Train model with the specified parameters and save the best model as best_model.keras
 def train_and_save_model(X_train, y_trainHot, X_test, y_testHot):
-    # Create the model
+    # Create model
     model = create_model()
 
-    # Set up TensorBoard logging directory
+    # Set up TensorBoard logging dir
     log_dir = os.path.join("logs", "fit", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
     tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
-    # Set up other callbacks: Reduce learning rate on plateau and save the best model
+    # Set up other callbacks
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, min_lr=0.00001)
     checkpoint = ModelCheckpoint('best_model.keras', monitor='val_loss', save_best_only=True, mode='min')
     
-    # Evaluation metrics callback
+
     evaluation_callback = EvaluationMetricsCallback()
 
-    # Train the model
+    # Train 
     model.fit(
         X_train, y_trainHot,
         validation_data=(X_test, y_testHot),
@@ -96,5 +96,5 @@ def train_and_save_model(X_train, y_trainHot, X_test, y_testHot):
 
     print("Training complete. Best model saved as 'best_model.keras'.")
 
-# Call the function to train the model and save the best model
+# Train and save best model
 train_and_save_model(X_train, y_trainHot, X_test, y_testHot)
