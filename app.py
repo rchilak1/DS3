@@ -67,10 +67,11 @@ def load_model():
     return model
 
 # Function to compute overall test accuracy
+# Function to compute overall test accuracy
 @st.cache_data
 def compute_test_accuracy(_model, _test_dataset):
     # Evaluate the model on the test dataset
-    results = model.evaluate(test_dataset, verbose=0)
+    results = _model.evaluate(_test_dataset, verbose=0)  # Use _model instead of model
     accuracy = results[1]  # Assuming 'accuracy' is the second metric
     return accuracy
 
@@ -81,6 +82,7 @@ st.subheader(' ')
 
 # Load the trained model for inference
 model = load_model()
+
 
 st.subheader(' ')
 st.subheader(':red[Click below for detailed _plots_, _metrics_, and _report_]')
