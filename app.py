@@ -54,6 +54,7 @@ def load_model():
     # Load the pre-trained best model (best_model.keras)
     if os.path.exists('best_model.keras'):
         model = tf.keras.models.load_model('best_model.keras')
+        st.divider()
         st.subheader(":grey[Loaded best model from cloud, inferenced on test data]")
         st.divider()
         if model:
