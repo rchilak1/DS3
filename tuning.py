@@ -18,7 +18,7 @@ def load_data():
     y_trainHot_link = 'https://drive.google.com/uc?id=1-2FQR0BqDUqHhXSJc9k0iYn74-vJ7CMG'
     y_testHot_link = 'https://drive.google.com/uc?id=1-0iiFd75de7OPVb2BatpllwGD5x8Dm5u'
 
-    # Download the files if not already present
+    # Download files if not already present
     if not os.path.exists('X_train.npy'):
         st.write("Downloading X_train.npy...")
         gdown.download(X_train_link, 'X_train.npy', quiet=False)
@@ -32,7 +32,7 @@ def load_data():
         st.write("Downloading y_testHot.npy...")
         gdown.download(y_testHot_link, 'y_testHot.npy', quiet=False)
 
-    # Load the numpy arrays after downloading
+    # Load numpy arrays after downloading
     X_train = np.load('X_train.npy', allow_pickle=True)
     X_test = np.load('X_test.npy', allow_pickle=True)
     y_trainHot = np.load('y_trainHot.npy', allow_pickle=True)
@@ -41,39 +41,39 @@ def load_data():
     return X_train, X_test, y_trainHot, y_testHot
 
 
-# Load the data
+# Load data
 X_train, X_test, y_trainHot, y_testHot = load_data()
 print("Data loaded successfully!")
 
-# Table to store the parameter test results
+# Table to store parameter test results
 results_table = []
 
-# Custom function to create the model
+# Custom function to create model
 def create_model(activation='relu', dense_units=1024, dropout_rate=0.5):
-    # Load MobileNetV2 without the top layers and freeze its layers
+    # Load MobileNetV2 without top layers and freeze layers
     base_model = MobileNetV2(weights='imagenet', include_top=False, input_shape=(150, 150, 3))
     base_model.trainable = False
 
-    # Add custom top layers for the classification task
+    # Add custom top layers for classification
     x = base_model.output
-    x = GlobalAveragePooling2D()(x)  # Global average pooling
+    x = GlobalAveragePooling2D()(x)  
     x = Dense(dense_units, activation=activation)(x)  # Fully connected layer with configurable activation
     x = Dropout(dropout_rate)(x)  # Dropout to prevent overfitting
     predictions = Dense(10, activation='softmax')(x)  # Output layer for 10 classes
 
-    # Define the model
+   
     model = Model(inputs=base_model.input, outputs=predictions)
     
     return model
 
-# Custom function to compile and train the model
+# Function to compile and train model
 def train_model(X_train, y_trainHot, X_test, y_testHot, learning_rate=0.0001, epochs=10, batch_size=32,
                 activation='relu', dense_units=1024, dropout_rate=0.5, optimizer='adam', iteration=1):
     
-    # Create model with the given hyperparameters
+    # Create model with given hyperparameters
     model = create_model(activation=activation, dense_units=dense_units, dropout_rate=dropout_rate)
     
-    # Compile the model
+    # Compile
     opt = Adam(learning_rate=learning_rate) if optimizer == 'adam' else tf.keras.optimizers.SGD(learning_rate=learning_rate)
     model.compile(optimizer=opt, 
                   loss='categorical_crossentropy', 
@@ -82,7 +82,7 @@ def train_model(X_train, y_trainHot, X_test, y_testHot, learning_rate=0.0001, ep
     # Set up callbacks
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, min_lr=0.00001)
 
-    # Train the model
+    # Train 
     history = model.fit(
         X_train, y_trainHot,
         validation_data=(X_test, y_testHot),
@@ -92,11 +92,11 @@ def train_model(X_train, y_trainHot, X_test, y_testHot, learning_rate=0.0001, ep
         verbose=1
     )
 
-    # Evaluate the model
+    # Evaluate 
     train_acc = history.history['accuracy'][-1]  # Final training accuracy
     test_acc = model.evaluate(X_test, y_testHot, verbose=0)[1]  # Test accuracy
     
-    # Log the result
+    # Log 
     results_table.append({
         'Iteration': iteration,
         'Number of Layers': 1,  # Fixed for MobileNetV2 in this case
@@ -127,7 +127,7 @@ param_combinations = [
     {'activation': 'elu', 'dense_units': 1024, 'dropout_rate': 0.3, 'learning_rate': 0.0001, 'batch_size': 32, 'optimizer': 'adamax'}
 ]
 
-# Train the model with different hyperparameters
+# Train model with different hyperparameters
 for iteration, params in enumerate(param_combinations, start=1):
     
     model = train_model(
@@ -142,11 +142,11 @@ for iteration, params in enumerate(param_combinations, start=1):
         iteration=iteration
     )
 
-# Convert the results to a DataFrame for a tabular view
+# Convert results to DataFrame for tabular view
 df_results = pd.DataFrame(results_table)
 
-# Display the result table
+# Display result table
 print(df_results)
 
-# Optionally, save to a CSV file for reference
+# Save to a CSV file for reference
 df_results.to_csv("parameter_tuning_results.csv", index=False)
