@@ -5,9 +5,11 @@ from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import ReduceLROnPlateau, ModelCheckpoint
+from tensorflow.keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, TensorBoard
+from sklearn.metrics import confusion_matrix, classification_report
 import numpy as np
 import os
+import datetime
 
 # Caching the data loading step so it won't be reloaded every time
 def load_data():
@@ -39,20 +41,48 @@ def create_model():
     # Define the model
     model = Model(inputs=base_model.input, outputs=predictions)
 
-    # Compile the model
+    # Compile the model with additional metrics: precision, recall
     optimizer = Adam(learning_rate=0.0001)  # Adam optimizer with specified learning rate
-    model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', 
+                  metrics=['accuracy', 
+                           tf.keras.metrics.Precision(name='precision'), 
+                           tf.keras.metrics.Recall(name='recall')])
 
     return model
+
+# Custom callback to compute per-class accuracy
+class EvaluationMetricsCallback(tf.keras.callbacks.Callback):
+    def on_train_end(self, logs=None):
+        predictions = np.argmax(self.model.predict(X_test), axis=1)
+        true_labels = np.argmax(y_testHot, axis=1)
+
+        # Confusion Matrix
+        conf_matrix = confusion_matrix(true_labels, predictions)
+
+        # Per-Class Accuracy
+        class_accuracies = conf_matrix.diagonal() / conf_matrix.sum(axis=1)
+        for i, accuracy in enumerate(class_accuracies):
+            print(f"Accuracy for class {i}: {accuracy * 100:.2f}%")
+
+        # Display classification report
+        print(f"\nClassification Report:\n")
+        print(classification_report(true_labels, predictions))
 
 # Train the model with the specified parameters and save the best model as best_model.h5
 def train_and_save_model(X_train, y_trainHot, X_test, y_testHot):
     # Create the model
     model = create_model()
 
-    # Set up callbacks: Reduce learning rate on plateau and save the best model
+    # Set up TensorBoard logging directory
+    log_dir = os.path.join("logs", "fit", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+    tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+
+    # Set up other callbacks: Reduce learning rate on plateau and save the best model
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, min_lr=0.00001)
     checkpoint = ModelCheckpoint('best_model.keras', monitor='val_loss', save_best_only=True, mode='min')
+    
+    # Evaluation metrics callback
+    evaluation_callback = EvaluationMetricsCallback()
 
     # Train the model
     model.fit(
@@ -60,7 +90,7 @@ def train_and_save_model(X_train, y_trainHot, X_test, y_testHot):
         validation_data=(X_test, y_testHot),
         epochs=10,  # You can adjust this as needed
         batch_size=128,  # Batch size as specified
-        callbacks=[reduce_lr, checkpoint],
+        callbacks=[reduce_lr, checkpoint, tensorboard_callback, evaluation_callback],  # Add the callbacks here
         verbose=1
     )
 
