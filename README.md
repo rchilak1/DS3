@@ -12,11 +12,8 @@ loader.py
   - User inputs ideal parameters as arguments
   - Finetunes/retrains model and stores weights as best_model.keras
 
-epochInfo.png
-  - shows training/validation accuracy and loss per epoch for best model
-
-parameters.png
-  - shows training/validation accuracy values for each tested parameter combination
+png files
+  - screenshots of plots and metrics
 
 
 
