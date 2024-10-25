@@ -66,7 +66,7 @@ def load_model():
         return None
     return model
 
-# Function to compute overall test accuracy
+
 # Function to compute overall test accuracy
 @st.cache_data
 def compute_test_accuracy(_model, _test_dataset):
@@ -153,7 +153,7 @@ if model:
     # **Subset selection for display purposes**:
     # Limit to 25 images for visualization (subset of test set)
     num_images_to_visualize = 25
-    # Seed the random number generator for consistent results
+    # Seed random number generator for consistent results
     np.random.seed(42)
     random_indices = np.random.choice(num_test_samples, num_images_to_visualize, replace=False)
 
@@ -177,22 +177,22 @@ if model:
 
     st.divider()
 
-    # Create a slider for selecting the index of the test image from the limited subset
+    # Create a slider 
     st.subheader(f"{num_images_to_visualize} random test images with predicted and true labels:")
     index = st.slider("Select test image index:", min_value=0, max_value=num_images_to_visualize - 1, value=0)
 
-    # Display the selected test image and the predicted label
+    # Display selected test image and predicted label
     st.image(X_test_subset[index], caption=f"Test Image at Index {index}", use_column_width=True)
 
-    # Get the predicted label and the true label for the selected image
+    # Get predicted label true label for selected image
     predicted_label = np.argmax(y_pred_subset[index])
     true_label = np.argmax(y_testHot_subset[index])
 
-    # Display the predicted and true label as common names
+    # Display predicted and true label as common names
     predicted_common_name = monkey_labels[predicted_label]
     true_common_name = monkey_labels[true_label]
 
-    # Display the predicted common name and the true common name
+    # Display predicted common name and true common name
     st.subheader(f":blue[Predicted Label:] {predicted_common_name}")
     st.subheader(f":blue[True Label:] {true_common_name}")
 
