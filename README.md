@@ -1,4 +1,4 @@
-# CS4372 Assignment 3 Visualizer
+# CS4372 Monkey Model Visualizer
 
 app.py 
   - Serves as the streamlit backend
