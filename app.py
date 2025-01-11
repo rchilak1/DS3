@@ -4,7 +4,7 @@ import numpy as np
 import os
 import gdown
 
-st.title("CS4372 Assignment 3")
+st.title("Monkey Classifier!")
 st.subheader(' ')
 
 
@@ -182,7 +182,7 @@ if model:
     index = st.slider("Select test image index:", min_value=0, max_value=num_images_to_visualize - 1, value=0)
 
     # Display selected test image and predicted label
-    st.image(X_test_subset[index], caption=f"Test Image at Index {index}", use_column_width=True)
+    st.image(X_test_subset[index], caption=f"Test Image at Index {index}", use_container_width=True)
 
     # Get predicted label true label for selected image
     predicted_label = np.argmax(y_pred_subset[index])
